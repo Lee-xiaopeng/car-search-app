@@ -12,68 +12,61 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- 2. 核心 CSS 样式（强力修复版） ---
+# --- 2. 强力 CSS 注入 ---
 st.markdown("""
     <style>
-    /* 1. 彻底隐藏：GitHub图标、右下角管理图标(小皇冠)、底部水印 */
-    [data-testid="stHeaderActionElements"] { visibility: hidden !important; } /* 隐藏Fork */
-    [data-testid="stToolbar"] { display: none !important; } /* 隐藏右下角管理菜单 */
-    footer { visibility: hidden !important; }
+    /* 1. 隐藏右侧 GitHub、Fork、小皇冠图标，但【绝对保留】左侧侧边栏按钮 */
+    [data-testid="stHeaderActionElements"], .stAppDeployButton, [data-testid="stToolbar"] {
+        display: none !important;
+    }
     
-    /* 2. 确保左上角侧边栏按钮可见 */
-    [data-testid="stSidebarNav"] { visibility: visible !important; }
-
-    /* 3. 右上角 Logo 定位 */
+    /* 2. 让顶部 Header 背景透明，不遮挡自定义内容，同时确保侧边栏按钮可见 */
+    header[data-testid="stHeader"] {
+        background: rgba(0,0,0,0) !important;
+        color: #1f1f1f !important;
+    }
+    
+    /* 3. 右上角 Logo 定位 (下移至 GitHub 图标原位置下方) */
     .logo-container {
         position: absolute;
         top: 25px;
         right: 15px;
         z-index: 1000;
     }
-    .custom-logo { width: 60px; height: auto; }
+    .custom-logo { width: 65px; height: auto; }
     @media (min-width: 768px) {
-        .custom-logo { width: 85px; }
+        .custom-logo { width: 90px; }
         .logo-container { top: 30px; right: 20px; }
     }
 
-    /* 4. 标题文字：确保白底黑底均可见 */
+    /* 4. 标题文字：强制深色，白底黑底均可见 */
     .main-title {
         text-align: center; 
-        margin-top: 4rem;
+        margin-top: 4.5rem;
         margin-bottom: 2rem; 
         font-size: 1.6rem; 
         white-space: nowrap; 
-        color: #1f1f1f !important; /* 强制深色 */
+        color: #1f1f1f !important;
         font-weight: 800;
     }
 
-    /* 5. 【核心修复】搜索按钮全平台居中 */
-    div[data-testid="stForm"] {
-        border: none !important;
-        padding: 0 !important;
-    }
-
-    /* 定位按钮容器并居中 */
-    div[data-testid="stForm"] > div[data-testid="stVerticalBlock"] > div:last-child {
+    /* 5. 【修复居中】强制立即搜索按钮在手机端居中 */
+    .stButton {
         display: flex !important;
         justify-content: center !important;
-        width: 100% !important;
+        margin: 20px 0 !important;
     }
-
-    /* 按钮具体样式：蓝色底、白色字、区分背景 */
-    div.stButton > button {
-        background-color: #007bff !important;
+    .stButton > button {
+        background-color: #007bff !important; /* 明显的蓝色按钮 */
         color: white !important;
         border-radius: 25px !important;
         padding: 0.6rem 3.5rem !important;
         border: none !important;
         font-weight: bold !important;
         box-shadow: 0 4px 15px rgba(0,123,255,0.4) !important;
-        margin: 0 auto !important;
-        display: block !important;
     }
 
-    /* 6. 结果卡片美化 */
+    /* 6. 结果卡片样式 */
     .vehicle-card {
         background-color: white !important; 
         border-radius: 12px; 
@@ -85,10 +78,12 @@ st.markdown("""
     }
     .plate-header { color: #007bff; font-size: 1.4rem; font-weight: bold; margin-bottom: 0.5rem; }
     .info-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #eee; }
-    .info-label { color: #666 !important; }
-    .info-value { color: #111 !important; font-weight: 600; }
-
-    .block-container { padding-top: 6.5rem !important; }
+    
+    /* 隐藏底部水印 */
+    footer { visibility: hidden !important; }
+    
+    /* 页面整体下移适配 */
+    .block-container { padding-top: 7rem !important; }
     </style>
     
     <div class="logo-container">
@@ -112,9 +107,10 @@ def init_connection():
 
 sheet = init_connection()
 
-# --- 4. 侧边栏：管理后台（新增按钮所在处） ---
+# --- 4. 侧边栏：新增功能 ---
+# 只要点击左上角的 >> 按钮，这里的内容就会出现
 with st.sidebar:
-    st.header("⚙️ 数据录入")
+    st.header("⚙️ 后台管理")
     admin_pwd = st.text_input("管理密码", type="password")
     if admin_pwd == "admin888":
         st.success("验证通过")
@@ -125,16 +121,16 @@ with st.sidebar:
             f4 = st.text_input("厂区")
             f5 = st.text_input("手机号")
             f6 = st.text_input("车牌号 *")
-            if st.form_submit_button("同步到云端"):
+            if st.form_submit_button("保存到云端"):
                 if f6.strip():
                     try:
                         sheet.append_row([f1, f2, f3, f4, f5, f6.upper().strip()])
-                        st.success("✅ 已存入 Google Sheets")
+                        st.success("✅ 数据已存入！")
                         st.cache_resource.clear()
                     except Exception as e:
                         st.error(f"失败: {e}")
 
-# --- 5. 主界面查询 ---
+# --- 5. 主界面 ---
 st.markdown('<div class="main-title">🚗 车辆信息智能检索</div>', unsafe_allow_html=True)
 
 with st.form("search_form"):
@@ -143,7 +139,7 @@ with st.form("search_form"):
         placeholder="请输入车牌中任意连续4位...", 
         label_visibility="visible"
     )
-    # 这里的按钮会被 CSS 强力居中
+    # CSS 已强制此按钮居中
     submitted = st.form_submit_button("立即搜索")
 
 # --- 6. 结果展示 ---
@@ -162,7 +158,7 @@ if (submitted or search_id) and search_id.strip():
                     for col in df.columns:
                         if col != "车牌号":
                             val = str(row[col]).strip() if str(row[col]).strip() != "" else "无"
-                            card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
+                            card_html += f'<div class="info-row"><span style="color:#666">{col}</span><span style="color:#111;font-weight:600">{val}</span></div>'
                     card_html += '</div>'
                     st.markdown(card_html, unsafe_allow_html=True)
             else:
