@@ -20,23 +20,30 @@ st.markdown("""
     footer { visibility: hidden; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); } 
 
-    /* 2. 右上角 Logo 自适应定位 */
+    /* 2. 右上角 Logo 定位：下移至 GitHub 图标下方 */
     .logo-container {
         position: absolute;
-        top: -65px;
-        right: 0px;
+        top: 10px; /* 调整此值可微调上下位置 */
+        right: 10px;
         z-index: 1000;
     }
-    .custom-logo { width: 70px; height: auto; }
+    .custom-logo { width: 60px; height: auto; }
+    
+    /* 针对大屏幕的适配 */
     @media (min-width: 768px) {
-        .custom-logo { width: 100px; }
-        .logo-container { top: -45px; right: -40px; }
+        .custom-logo { width: 85px; }
+        .logo-container { top: 15px; right: 10px; }
     }
 
     /* 3. 标题单行强制显示 */
     .main-title {
-        text-align: center; margin-bottom: 1.5rem; font-size: 1.4rem; 
-        white-space: nowrap; color: #FFFFFF; font-weight: bold;
+        text-align: center; 
+        margin-top: 2rem; /* 增加顶部间距防止被下移的Logo遮挡 */
+        margin-bottom: 1.5rem; 
+        font-size: 1.4rem; 
+        white-space: nowrap; 
+        color: #FFFFFF; 
+        font-weight: bold;
     }
 
     /* 4. 立即搜索按钮居中布局 */
@@ -60,13 +67,14 @@ st.markdown("""
     .info-label { color: #777; font-size: 0.9rem; }
     .info-value { color: #111; font-weight: 500; font-size: 0.95rem; }
 
-    .block-container { padding-top: 3.5rem !important; }
+    /* 整体页面顶部下移，为 Logo 留出空间 */
+    .block-container { padding-top: 5rem !important; }
     </style>
     
     <div class="logo-container">
         <img src="https://cloud-assets-brwq.bcdn8.com/weice0314/uploads/20230314/46fd5ef88f68a88ea9858999c63b6362.svg" class="custom-logo">
     </div>
-    """, unsafe_allow_html=True) #
+    """, unsafe_allow_html=True)
 
 # --- 3. 数据库连接 ---
 @st.cache_resource
@@ -84,7 +92,7 @@ def init_connection():
 
 sheet = init_connection()
 
-# --- 4. 侧边栏：新增功能回归 ---
+# --- 4. 侧边栏：管理功能 ---
 with st.sidebar:
     st.header("⚙️ 管理后台")
     admin_pwd = st.text_input("请输入管理密码", type="password")
@@ -94,7 +102,6 @@ with st.sidebar:
         st.divider()
         st.subheader("新增记录")
         with st.form("add_form", clear_on_submit=True):
-            # 严格对应 A-F 列顺序
             f1 = st.text_input("工号")
             f2 = st.text_input("姓名")
             f3 = st.text_input("部门")
@@ -114,17 +121,15 @@ with st.sidebar:
                     st.warning("车牌号为必填项")
 
 # --- 5. 主界面：查询部分 ---
-st.markdown('<div class="main-title">🚗 车辆信息智能检索</div>', unsafe_allow_html=True) #
+st.markdown('<div class="main-title">🚗 车辆信息智能检索</div>', unsafe_allow_html=True)
 
 with st.form("search_form"):
-    # 明确标注 label 并设置 placeholder 以确保提示语显示
     search_id = st.text_input(
         "车牌号码查询", 
         placeholder="请输入车牌中任意连续4位...", 
         label_visibility="visible"
     )
     
-    # 按钮居中技巧
     c1, c2, c3 = st.columns([1, 1, 1])
     with c2:
         submitted = st.form_submit_button("立即搜索")
@@ -142,9 +147,7 @@ if (submitted or search_id) and search_id.strip():
             if not result.empty:
                 st.info(f"为您找到 {len(result)} 条匹配记录")
                 for _, row in result.iterrows():
-                    # 生成自适应卡片
                     card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
-                    # 动态遍历所有字段
                     for col in df.columns:
                         if col != "车牌号":
                             val = str(row[col]).strip() if str(row[col]).strip() != "" else "无"
