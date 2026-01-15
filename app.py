@@ -15,26 +15,31 @@ st.set_page_config(
 # --- 2. 核心 CSS 样式 ---
 st.markdown("""
     <style>
-    /* 1. 隐藏所有Streamlit部署相关的多余元素 */
+    /* 1. 只隐藏Streamlit部署的多余元素，保留工具栏按钮 */
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
-    header { visibility: hidden; }
-    [data-testid="stHeader"] { visibility: hidden; height: 0; }
-    [data-testid="stToolbar"] { display: none; }
-    [data-testid="stDecoration"] { display: none; }
     [data-testid="stStatusWidget"] { display: none; }
     .stDeployButton { display: none; }
-    .reportview-container .main .block-container { padding-top: 0; }
     
-    /* 2. 右上角 Logo 定位 */
+    /* 恢复工具栏相关元素 */
+    [data-testid="stToolbar"] { 
+        visibility: visible !important; 
+        opacity: 1 !important; 
+    }
+    [data-testid="stHeader"] { 
+        visibility: visible !important; 
+        background: rgba(0,0,0,0) !important; 
+    }
+    
+    /* 2. 调整右上角 Logo 位置和大小 */
     .logo-container {
         position: fixed;
-        top: 10px;
-        right: 10px;
+        top: 25px; /* 下移Logo位置，为工具栏留出空间 */
+        right: 15px;
         z-index: 9999;
     }
     .custom-logo { 
-        width: 60px; 
+        width: 75px; /* 放大Logo尺寸 */
         height: auto;
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
@@ -42,7 +47,7 @@ st.markdown("""
     /* 3. 标题样式优化 */
     .main-title {
         text-align: center; 
-        margin: 2rem 0 2rem 0; 
+        margin: 2.5rem 0 2rem 0; 
         font-size: 1.8rem; 
         white-space: nowrap; 
         color: var(--text-color) !important; 
@@ -62,16 +67,16 @@ st.markdown("""
         /* 移动端标题字体调整 */
         .main-title {
             font-size: 1.5rem;
-            margin: 1.5rem 0 1.5rem 0;
+            margin: 2rem 0 1.5rem 0;
         }
         
         /* 移动端Logo调整 */
         .custom-logo { 
-            width: 50px; 
+            width: 65px; /* 移动端稍小但比之前大 */
         }
         .logo-container {
-            top: 5px;
-            right: 5px;
+            top: 20px; /* 移动端下移 */
+            right: 10px;
         }
         
         /* 移动端按钮优化 */
@@ -85,16 +90,21 @@ st.markdown("""
         .stTextInput input {
             font-size: 16px !important; /* 防止iOS自动放大 */
         }
+        
+        /* 移动端工具栏调整 */
+        [data-testid="stToolbar"] {
+            right: 5px !important;
+        }
     }
     
     /* 桌面端特定样式 */
     @media (min-width: 769px) {
         .custom-logo { 
-            width: 80px; 
+            width: 90px; /* 桌面端更大 */
         }
         .logo-container { 
-            top: 15px; 
-            right: 20px; 
+            top: 30px; /* 下移位置 */
+            right: 25px; 
         }
     }
     
@@ -231,11 +241,25 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(51, 154, 240, 0.3) !important;
     }
     
-    /* 9. 页面整体调整 */
+    /* 9. 页面整体调整 - 为Logo和工具栏留出空间 */
     .main .block-container {
-        padding-top: 2rem !important;
+        padding-top: 2.5rem !important;
         padding-bottom: 3rem !important;
         max-width: 800px !important;
+    }
+    
+    /* 10. 侧边栏样式优化 */
+    [data-testid="stSidebar"] {
+        padding-top: 2rem;
+    }
+    
+    [data-testid="stSidebarNav"] {
+        padding-top: 1rem;
+    }
+    
+    /* 11. 调整整体页面内容，避免被Logo和工具栏遮挡 */
+    .stApp {
+        padding-top: 0.5rem;
     }
     </style>
     
@@ -335,7 +359,7 @@ if submitted or search_id:
                         result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term)]
                         
                         if not result.empty:
-                            st.success(f"✅ 找到 {len(result)} 条包含“{search_term}”的记录")
+                            st.success(f"✅ 找到 {len(result)} 条包含「{search_term}」的记录")
                             
                             # 添加结果统计卡片
                             st.markdown(f"""
@@ -363,6 +387,6 @@ if submitted or search_id:
                                 card_html += '</div>'
                                 st.markdown(card_html, unsafe_allow_html=True)
                         else:
-                            st.warning(f"❌ 未找到包含“{search_term}”的车辆信息")
+                            st.warning(f"❌ 未找到包含「{search_term}」的车辆信息")
                     except Exception as e:
                         st.error(f"查询过程发生错误: {e}")
