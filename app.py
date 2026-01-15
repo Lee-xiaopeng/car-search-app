@@ -359,7 +359,7 @@ if submitted or search_id:
                         result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term)]
                         
                         if not result.empty:
-                            st.success(f"✅ 找到 {len(result)} 条包含「{search_term}」的记录")
+                            #st.success(f"✅ 找到 {len(result)} 条包含「{search_term}」的记录")
                             
                             # 添加结果统计卡片
                             st.markdown(f"""
