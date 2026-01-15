@@ -9,20 +9,30 @@ from io import BytesIO
 st.set_page_config(page_title="车辆信息查询", layout="centered")
 
 # --- 1. 数据库连接 ---
+
 @st.cache_resource
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # 从 Streamlit 的机密设置中读取 JSON 密钥
-    creds_dict = st.secrets["gcp_service_account"]
+    # 尝试从 Secrets 读取
+    if "gcp_service_account" not in st.secrets:
+        st.error("Secrets 中缺少 'gcp_service_account' 配置项！")
+        st.stop()
+        
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    # 关键点：强制处理私钥中的换行符
+    if "private_key" in creds_dict:
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
-    # 明确打开名为 Sheet1 的工作表
-    return client.open("PlateDB").worksheet("Sheet1")
+    # 确保表格名称完全一致
+    return client.open("PlateDB").sheet1
 
 try:
     sheet = init_connection()
 except Exception as e:
-    st.error(f"数据库连接失败: {e}")
+    st.error("❌ 数据库连接详细错误报告：")
+    st.exception(e)  # 这行会显示红色框框，里面有具体的错误代码
     st.stop()
 
 # --- 2. 路由逻辑 ---
