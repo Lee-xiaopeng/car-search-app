@@ -6,7 +6,7 @@ import qrcode
 from io import BytesIO
 import json
 
-st.write("当前版本：v1.4 - 原始JSON直接解析模式")
+#st.write("当前版本：v1.4 - 原始JSON直接解析模式")
 # 页面设置
 st.set_page_config(page_title="车辆信息查询", layout="centered")
 
@@ -29,7 +29,7 @@ def init_connection():
 
 try:
     sheet = init_connection()
-    st.success("✅ 终于成功连接！")
+    ##st.success("✅ 终于成功连接！")
 except Exception as e:
     st.error("❌ 错误信息：")
     st.exception(e)
