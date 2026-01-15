@@ -12,71 +12,68 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- 2. 核心 CSS 样式（彻底修复居中与文字可见度） ---
+# --- 2. 核心 CSS 样式（强力修复版） ---
 st.markdown("""
     <style>
-    /* 1. 基础隐藏 */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    [data-testid="stHeader"] { background: rgba(0,0,0,0); } 
+    /* 1. 彻底隐藏：GitHub图标、右下角管理图标(小皇冠)、底部水印 */
+    [data-testid="stHeaderActionElements"] { visibility: hidden !important; } /* 隐藏Fork */
+    [data-testid="stToolbar"] { display: none !important; } /* 隐藏右下角管理菜单 */
+    footer { visibility: hidden !important; }
+    
+    /* 2. 确保左上角侧边栏按钮可见 */
+    [data-testid="stSidebarNav"] { visibility: visible !important; }
 
-    /* 2. 右上角 Logo 定位 */
+    /* 3. 右上角 Logo 定位 */
     .logo-container {
         position: absolute;
-        top: 20px;
+        top: 25px;
         right: 15px;
         z-index: 1000;
     }
     .custom-logo { width: 60px; height: auto; }
     @media (min-width: 768px) {
         .custom-logo { width: 85px; }
-        .logo-container { top: 25px; right: 20px; }
+        .logo-container { top: 30px; right: 20px; }
     }
 
-    /* 3. 【修复】标题文字在白底模式下的可见度 */
+    /* 4. 标题文字：确保白底黑底均可见 */
     .main-title {
         text-align: center; 
-        margin-top: 3.5rem;
+        margin-top: 4rem;
         margin-bottom: 2rem; 
         font-size: 1.6rem; 
         white-space: nowrap; 
-        /* 改为深色，确保白底可见；同时增加一点发光阴影提升质感 */
-        color: #1f1f1f !important; 
+        color: #1f1f1f !important; /* 强制深色 */
         font-weight: 800;
-        text-shadow: 0px 0px 1px rgba(255,255,255,0.8);
     }
 
-    /* 4. 【修复】强制按钮居中（穿透多层容器） */
+    /* 5. 【核心修复】搜索按钮全平台居中 */
     div[data-testid="stForm"] {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-    }
-    
-    div[data-testid="stForm"] > div {
-        width: 100% !important;
+        border: none !important;
+        padding: 0 !important;
     }
 
-    /* 专门定位按钮所在的 div 并居中 */
-    div.stButton {
-        text-align: center !important;
+    /* 定位按钮容器并居中 */
+    div[data-testid="stForm"] > div[data-testid="stVerticalBlock"] > div:last-child {
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
     }
 
-    /* 按钮颜色与样式升级 */
+    /* 按钮具体样式：蓝色底、白色字、区分背景 */
     div.stButton > button {
         background-color: #007bff !important;
         color: white !important;
         border-radius: 25px !important;
-        padding: 0.6rem 3rem !important;
+        padding: 0.6rem 3.5rem !important;
         border: none !important;
-        font-weight: 600 !important;
+        font-weight: bold !important;
         box-shadow: 0 4px 15px rgba(0,123,255,0.4) !important;
+        margin: 0 auto !important;
+        display: block !important;
     }
 
-    /* 5. 结果卡片样式 */
+    /* 6. 结果卡片美化 */
     .vehicle-card {
         background-color: white !important; 
         border-radius: 12px; 
@@ -86,15 +83,12 @@ st.markdown("""
         border-left: 6px solid #007bff; 
         color: #1f1f1f !important;
     }
-    .plate-header { 
-        color: #007bff; font-size: 1.4rem; font-weight: bold; 
-        margin-bottom: 0.8rem; border-bottom: 2px solid #f0f2f6; padding-bottom: 0.5rem; 
-    }
-    .info-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px dashed #eee; }
-    .info-label { color: #666 !important; font-size: 0.9rem; }
-    .info-value { color: #111 !important; font-weight: 600; font-size: 1rem; }
+    .plate-header { color: #007bff; font-size: 1.4rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .info-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #eee; }
+    .info-label { color: #666 !important; }
+    .info-value { color: #111 !important; font-weight: 600; }
 
-    .block-container { padding-top: 6rem !important; }
+    .block-container { padding-top: 6.5rem !important; }
     </style>
     
     <div class="logo-container">
@@ -113,14 +107,14 @@ def init_connection():
         client = gspread.authorize(creds)
         return client.open("PlateDB").sheet1
     except Exception as e:
-        st.error("数据库连接失败")
+        st.error("数据库连接配置有误")
         return None
 
 sheet = init_connection()
 
-# --- 4. 侧边栏管理 ---
+# --- 4. 侧边栏：管理后台（新增按钮所在处） ---
 with st.sidebar:
-    st.header("⚙️ 管理后台")
+    st.header("⚙️ 数据录入")
     admin_pwd = st.text_input("管理密码", type="password")
     if admin_pwd == "admin888":
         st.success("验证通过")
@@ -131,11 +125,11 @@ with st.sidebar:
             f4 = st.text_input("厂区")
             f5 = st.text_input("手机号")
             f6 = st.text_input("车牌号 *")
-            if st.form_submit_button("确认保存到云端"):
+            if st.form_submit_button("同步到云端"):
                 if f6.strip():
                     try:
                         sheet.append_row([f1, f2, f3, f4, f5, f6.upper().strip()])
-                        st.success("保存成功")
+                        st.success("✅ 已存入 Google Sheets")
                         st.cache_resource.clear()
                     except Exception as e:
                         st.error(f"失败: {e}")
@@ -149,7 +143,7 @@ with st.form("search_form"):
         placeholder="请输入车牌中任意连续4位...", 
         label_visibility="visible"
     )
-    # CSS 已经强制居中 stButton，这里直接放置即可
+    # 这里的按钮会被 CSS 强力居中
     submitted = st.form_submit_button("立即搜索")
 
 # --- 6. 结果展示 ---
@@ -163,7 +157,6 @@ if (submitted or search_id) and search_id.strip():
             result = df[df['车牌号'].astype(str).str.upper().str.contains(query)]
             
             if not result.empty:
-                st.toast(f"找到 {len(result)} 条匹配记录")
                 for _, row in result.iterrows():
                     card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
                     for col in df.columns:
