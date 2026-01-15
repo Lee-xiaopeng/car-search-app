@@ -5,7 +5,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import qrcode
 from io import BytesIO
 
-
+st.write("当前版本：v1.1 - 修复了Base64错误")
 # 页面设置
 st.set_page_config(page_title="车辆信息查询", layout="centered")
 
@@ -15,28 +15,26 @@ st.set_page_config(page_title="车辆信息查询", layout="centered")
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    # 1. 确保读取的是我们定义的 [gcp_service_account]
+    # 转换为普通字典以进行操作
     creds_dict = dict(st.secrets["gcp_service_account"])
     
-    # 2. 【核心修复】深度清洗密钥
-    # 这一步会处理所有的换行和空格问题，防止出现 "65 characters" 错误
-    raw_key = creds_dict["private_key"]
-    # 修复常见的转义字符问题
-    clean_key = raw_key.replace("\\n", "\n")
-    creds_dict["private_key"] = clean_key
+    # 【核心修复】自动处理密钥中的换行和残留空格
+    if "private_key" in creds_dict:
+        # 将字面量的 \n 替换为真实的换行符，并去掉行首尾空格
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
         
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     
-    # 确保表格名字完全一致
+    # 确保表格名称与 image_5f2faf.jpg 中的 "PlateDB" 严格一致
     return client.open("PlateDB").sheet1
 
 try:
     sheet = init_connection()
     st.success("✅ 数据库连接成功！")
 except Exception as e:
-    st.error("❌ 数据库连接详细错误报告：")
-    st.exception(e)  # 显示具体的堆栈信息
+    st.error("❌ 连接失败详细堆栈追踪：")
+    st.exception(e) # 这将显示具体的错误行，非常重要
     st.stop()
     
 # --- 2. 路由逻辑 ---
