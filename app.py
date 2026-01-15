@@ -12,72 +12,55 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- 2. 核心 CSS 样式 (UI 净化 + 颜色自适应 + 强制居中) ---
+# --- 2. 核心 CSS 样式 ---
 st.markdown("""
     <style>
-    /* 1. 【核心需求】隐藏右下角广告、水印、以及不需要的菜单 */
-    footer { visibility: hidden !important; display: none !important; }
-    #MainMenu { visibility: hidden !important; }
-    [data-testid="stToolbar"] { visibility: hidden !important; display: none !important; } /* 隐藏右下角浮窗 */
-    .stAppDeployButton { display: none !important; } /* 隐藏顶部的 Deploy 按钮 */
-    [data-testid="stHeaderActionElements"] { display: none !important; } /* 隐藏右上角三点菜单 */
+    /* 1. 隐藏多余元素，确保左侧侧边栏按钮可见 */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    [data-testid="stHeader"] { background: rgba(0,0,0,0); } 
 
-    /* 2. 顶部 Header 透明化，但保留左侧区域以便能点击侧边栏按钮 */
-    [data-testid="stHeader"] { 
-        background: rgba(0,0,0,0) !important; 
-        z-index: 1;
-    }
-
-    /* 3. 右上角 Logo 定位 */
+    /* 2. 右上角 Logo 定位：下移至 GitHub 图标下方 */
     .logo-container {
         position: absolute;
-        top: 10px;
+        top: 10px; /* 调整此值可微调上下位置 */
         right: 10px;
         z-index: 1000;
     }
     .custom-logo { width: 60px; height: auto; }
+    
+    /* 针对大屏幕的适配 */
     @media (min-width: 768px) {
         .custom-logo { width: 85px; }
         .logo-container { top: 15px; right: 10px; }
     }
 
-    /* 4. 标题样式：跟随系统深浅模式自动变色 */
+    /* 3. 标题单行强制显示 - 颜色修复版 */
     .main-title {
         text-align: center; 
-        margin-top: 2.5rem; 
+        margin-top: 2rem; /* 增加顶部间距防止被下移的Logo遮挡 */
         margin-bottom: 1.5rem; 
         font-size: 1.4rem; 
         white-space: nowrap; 
-        color: var(--text-color) !important; /* 关键：自动适配 */
+        
+        /* 关键修改：使用系统变量，自动适配深色/浅色模式 */
+        color: var(--text-color) !important; 
+        
         font-weight: bold;
     }
 
-    /* 5. 搜索按钮：手机端强制居中 */
-    div.stButton {
+    /* 4. 立即搜索按钮居中布局 */
+    .stButton {
         display: flex;
         justify-content: center;
-        width: 100%;
         margin-top: 10px;
     }
-    div.stButton > button {
-        margin: 0 auto;
-        display: block;
-        background-color: #007bff !important;
-        color: white !important;
-        border-radius: 8px;
-        padding: 0.5rem 2rem;
-        border: none;
-    }
 
-    /* 6. 结果卡片美化 */
+    /* 5. 结果卡片美化 */
     .vehicle-card {
-        background-color: white; 
-        border-radius: 12px; 
-        padding: 1.2rem;
-        margin-bottom: 1rem; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border-left: 5px solid #007bff; 
-        color: #31333F; /* 卡片内部强制深色字，保证白底卡片内容清晰 */
+        background-color: white; border-radius: 12px; padding: 1.2rem;
+        margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-left: 5px solid #007bff; color: #31333F;
     }
     .plate-header { 
         color: #007bff; font-size: 1.3rem; font-weight: bold; 
@@ -87,6 +70,7 @@ st.markdown("""
     .info-label { color: #777; font-size: 0.9rem; }
     .info-value { color: #111; font-weight: 500; font-size: 0.95rem; }
 
+    /* 整体页面顶部下移，为 Logo 留出空间 */
     .block-container { padding-top: 5rem !important; }
     </style>
     
@@ -106,7 +90,7 @@ def init_connection():
         client = gspread.authorize(creds)
         return client.open("PlateDB").sheet1
     except Exception as e:
-        st.error(f"数据库连接失败")
+        st.error(f"数据库连接失败，请检查配置")
         return None
 
 sheet = init_connection()
@@ -117,7 +101,7 @@ with st.sidebar:
     admin_pwd = st.text_input("请输入管理密码", type="password")
     
     if admin_pwd == "admin888":
-        st.success("验证成功")
+        st.success("身份验证成功")
         st.divider()
         st.subheader("新增记录")
         with st.form("add_form", clear_on_submit=True):
@@ -128,7 +112,7 @@ with st.sidebar:
             f5 = st.text_input("手机号")
             f6 = st.text_input("车牌号 *")
             
-            if st.form_submit_button("保存到云端"):
+            if st.form_submit_button("确认保存到云端"):
                 if f6.strip():
                     try:
                         sheet.append_row([f1, f2, f3, f4, f5, f6.upper().strip()])
