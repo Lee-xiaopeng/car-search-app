@@ -5,6 +5,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import qrcode
 from io import BytesIO
 
+
 # 页面设置
 st.set_page_config(page_title="车辆信息查询", layout="centered")
 
@@ -13,28 +14,31 @@ st.set_page_config(page_title="车辆信息查询", layout="centered")
 @st.cache_resource
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # 尝试从 Secrets 读取
-    if "gcp_service_account" not in st.secrets:
-        st.error("Secrets 中缺少 'gcp_service_account' 配置项！")
-        st.stop()
-        
+    
+    # 1. 确保读取的是我们定义的 [gcp_service_account]
     creds_dict = dict(st.secrets["gcp_service_account"])
-    # 关键点：强制处理私钥中的换行符
-    if "private_key" in creds_dict:
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    
+    # 2. 【核心修复】深度清洗密钥
+    # 这一步会处理所有的换行和空格问题，防止出现 "65 characters" 错误
+    raw_key = creds_dict["private_key"]
+    # 修复常见的转义字符问题
+    clean_key = raw_key.replace("\\n", "\n")
+    creds_dict["private_key"] = clean_key
         
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
-    # 确保表格名称完全一致
+    
+    # 确保表格名字完全一致
     return client.open("PlateDB").sheet1
 
 try:
     sheet = init_connection()
+    st.success("✅ 数据库连接成功！")
 except Exception as e:
     st.error("❌ 数据库连接详细错误报告：")
-    st.exception(e)  # 这行会显示红色框框，里面有具体的错误代码
+    st.exception(e)  # 显示具体的堆栈信息
     st.stop()
-
+    
 # --- 2. 路由逻辑 ---
 query_params = st.query_params
 is_admin = query_params.get("mode") == "admin"
