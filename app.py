@@ -35,14 +35,17 @@ st.markdown("""
         .logo-container { top: 15px; right: 10px; }
     }
 
-    /* 3. 标题单行强制显示 */
+    /* 3. 标题单行强制显示 - 颜色修复版 */
     .main-title {
         text-align: center; 
         margin-top: 2rem; /* 增加顶部间距防止被下移的Logo遮挡 */
         margin-bottom: 1.5rem; 
         font-size: 1.4rem; 
         white-space: nowrap; 
-        color: #FFFFFF; 
+        
+        /* 关键修改：使用系统变量，自动适配深色/浅色模式 */
+        color: var(--text-color) !important; 
+        
         font-weight: bold;
     }
 
