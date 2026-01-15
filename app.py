@@ -5,7 +5,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import qrcode
 from io import BytesIO
 
-st.write("当前版本：v1.1 - 修复了Base64错误")
+st.write("当前版本：v1.4 - 原始JSON直接解析模式")
 # 页面设置
 st.set_page_config(page_title="车辆信息查询", layout="centered")
 
@@ -14,35 +14,24 @@ st.set_page_config(page_title="车辆信息查询", layout="centered")
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    # 获取原始数据
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    raw_key = creds_dict["private_key"]
+    # 直接获取 secrets 中的 json 字符串
+    json_info = st.secrets["gcp_service_account"]["json_data"]
     
-    # 【暴力修复逻辑】
-    # 1. 先去掉前后的空白
-    fixed_key = raw_key.strip()
-    # 2. 如果里面有被转义的 \n，先转回换行符
-    fixed_key = fixed_key.replace("\\n", "\n")
-    # 3. 针对 65 字符错误：分行处理，强制删掉每一行末尾多出的空格
-    lines = [line.strip() for line in fixed_key.split("\n")]
-    fixed_key = "\n".join(lines)
-    
-    # 写回字典
-    creds_dict["private_key"] = fixed_key
+    # 使用 json.loads 将字符串转回字典
+    # 这样 json 库会自动把文本里的 \n 转义成真正的换行符
+    creds_dict = json.loads(json_info)
     
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     
-    # 按照 image_5f8a29.jpg 确认表格名是 PlateDB
     return client.open("PlateDB").sheet1
 
 try:
     sheet = init_connection()
-    st.success("✅ 数据库连接成功！")
+    st.success("✅ 终于成功连接！")
 except Exception as e:
-    st.error("❌ 连接失败详细堆栈追踪：")
-    st.exception(e) # 这将显示具体的错误行，非常重要
-    st.stop()
+    st.error("❌ 错误信息：")
+    st.exception(e)
     
 # --- 2. 路由逻辑 ---
 query_params = st.query_params
