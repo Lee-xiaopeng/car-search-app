@@ -12,55 +12,72 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- 2. 核心 CSS 样式 ---
+# --- 2. 核心 CSS 样式 (UI 净化 + 颜色自适应 + 强制居中) ---
 st.markdown("""
     <style>
-    /* 1. 隐藏多余元素，确保左侧侧边栏按钮可见 */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    [data-testid="stHeader"] { background: rgba(0,0,0,0); } 
+    /* 1. 【核心需求】隐藏右下角广告、水印、以及不需要的菜单 */
+    footer { visibility: hidden !important; display: none !important; }
+    #MainMenu { visibility: hidden !important; }
+    [data-testid="stToolbar"] { visibility: hidden !important; display: none !important; } /* 隐藏右下角浮窗 */
+    .stAppDeployButton { display: none !important; } /* 隐藏顶部的 Deploy 按钮 */
+    [data-testid="stHeaderActionElements"] { display: none !important; } /* 隐藏右上角三点菜单 */
 
-    /* 2. 右上角 Logo 定位：下移至 GitHub 图标下方 */
+    /* 2. 顶部 Header 透明化，但保留左侧区域以便能点击侧边栏按钮 */
+    [data-testid="stHeader"] { 
+        background: rgba(0,0,0,0) !important; 
+        z-index: 1;
+    }
+
+    /* 3. 右上角 Logo 定位 */
     .logo-container {
         position: absolute;
-        top: 10px; /* 调整此值可微调上下位置 */
+        top: 10px;
         right: 10px;
         z-index: 1000;
     }
     .custom-logo { width: 60px; height: auto; }
-    
-    /* 针对大屏幕的适配 */
     @media (min-width: 768px) {
         .custom-logo { width: 85px; }
         .logo-container { top: 15px; right: 10px; }
     }
 
-    /* 3. 标题单行强制显示 - 颜色修复版 */
+    /* 4. 标题样式：跟随系统深浅模式自动变色 */
     .main-title {
         text-align: center; 
-        margin-top: 2rem; /* 增加顶部间距防止被下移的Logo遮挡 */
+        margin-top: 2.5rem; 
         margin-bottom: 1.5rem; 
         font-size: 1.4rem; 
         white-space: nowrap; 
-        
-        /* 关键修改：使用系统变量，自动适配深色/浅色模式 */
-        color: var(--text-color) !important; 
-        
+        color: var(--text-color) !important; /* 关键：自动适配 */
         font-weight: bold;
     }
 
-    /* 4. 立即搜索按钮居中布局 */
-    .stButton {
+    /* 5. 搜索按钮：手机端强制居中 */
+    div.stButton {
         display: flex;
         justify-content: center;
+        width: 100%;
         margin-top: 10px;
     }
+    div.stButton > button {
+        margin: 0 auto;
+        display: block;
+        background-color: #007bff !important;
+        color: white !important;
+        border-radius: 8px;
+        padding: 0.5rem 2rem;
+        border: none;
+    }
 
-    /* 5. 结果卡片美化 */
+    /* 6. 结果卡片美化 */
     .vehicle-card {
-        background-color: white; border-radius: 12px; padding: 1.2rem;
-        margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border-left: 5px solid #007bff; color: #31333F;
+        background-color: white; 
+        border-radius: 12px; 
+        padding: 1.2rem;
+        margin-bottom: 1rem; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 5px solid #007bff; 
+        color: #31333F; /* 卡片内部强制深色字，保证白底卡片内容清晰 */
     }
     .plate-header { 
         color: #007bff; font-size: 1.3rem; font-weight: bold; 
@@ -70,7 +87,6 @@ st.markdown("""
     .info-label { color: #777; font-size: 0.9rem; }
     .info-value { color: #111; font-weight: 500; font-size: 0.95rem; }
 
-    /* 整体页面顶部下移，为 Logo 留出空间 */
     .block-container { padding-top: 5rem !important; }
     </style>
     
@@ -90,7 +106,7 @@ def init_connection():
         client = gspread.authorize(creds)
         return client.open("PlateDB").sheet1
     except Exception as e:
-        st.error(f"数据库连接失败，请检查配置")
+        st.error(f"数据库连接失败")
         return None
 
 sheet = init_connection()
@@ -101,7 +117,7 @@ with st.sidebar:
     admin_pwd = st.text_input("请输入管理密码", type="password")
     
     if admin_pwd == "admin888":
-        st.success("身份验证成功")
+        st.success("验证成功")
         st.divider()
         st.subheader("新增记录")
         with st.form("add_form", clear_on_submit=True):
@@ -112,7 +128,7 @@ with st.sidebar:
             f5 = st.text_input("手机号")
             f6 = st.text_input("车牌号 *")
             
-            if st.form_submit_button("确认保存到云端"):
+            if st.form_submit_button("保存到云端"):
                 if f6.strip():
                     try:
                         sheet.append_row([f1, f2, f3, f4, f5, f6.upper().strip()])
@@ -132,30 +148,43 @@ with st.form("search_form"):
         placeholder="请输入车牌中任意连续4位...", 
         label_visibility="visible"
     )
-    
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        submitted = st.form_submit_button("立即搜索")
+    submitted = st.form_submit_button("立即搜索")
 
-# --- 6. 结果展示 ---
-if (submitted or search_id) and search_id.strip():
-    if not sheet:
-        st.error("无法访问数据库")
-    else:
-        with st.spinner("查询中..."):
-            df = pd.DataFrame(sheet.get_all_records())
-            query = search_id.strip().upper()
-            result = df[df['车牌号'].astype(str).str.upper().str.contains(query)]
-            
-            if not result.empty:
-                st.info(f"为您找到 {len(result)} 条匹配记录")
-                for _, row in result.iterrows():
-                    card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
-                    for col in df.columns:
-                        if col != "车牌号":
-                            val = str(row[col]).strip() if str(row[col]).strip() != "" else "无"
-                            card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
-                    card_html += '</div>'
-                    st.markdown(card_html, unsafe_allow_html=True)
+# --- 6. 结果展示与逻辑 ---
+if submitted or search_id:
+    query = search_id.strip() # 去除前后空格
+    
+    # 1. 逻辑修改：如果输入不为空
+    if query:
+        # 2. 逻辑修改：判断长度是否小于 4 位
+        if len(query) < 4:
+            st.warning("⚠️ 关键词太短，请至少输入 4 位字符以确保查询准确性")
+        else:
+            # 3. 长度合格，连接数据库
+            if not sheet:
+                st.error("数据库无法连接")
             else:
-                st.warning(f"❌ 未找到匹配记录")
+                with st.spinner("正在检索数据库..."):
+                    try:
+                        df = pd.DataFrame(sheet.get_all_records())
+                        # 4. 逻辑修改：转大写后进行包含匹配 (Contains)
+                        # contains 默认就是匹配连续字符串，且不区分位置
+                        search_term = query.upper()
+                        
+                        # 核心查询语句：车牌号列转字符串 -> 转大写 -> 检查是否包含用户输入的搜索词
+                        result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term)]
+                        
+                        if not result.empty:
+                            st.success(f"✅ 找到 {len(result)} 条包含“{search_term}”的记录")
+                            for _, row in result.iterrows():
+                                card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
+                                for col in df.columns:
+                                    if col != "车牌号":
+                                        val = str(row[col]).strip() if str(row[col]).strip() != "" else "无"
+                                        card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
+                                card_html += '</div>'
+                                st.markdown(card_html, unsafe_allow_html=True)
+                        else:
+                            st.warning(f"❌ 未找到包含“{search_term}”的车辆信息")
+                    except Exception as e:
+                        st.error(f"查询过程发生错误: {e}")
