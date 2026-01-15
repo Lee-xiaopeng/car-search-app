@@ -4,6 +4,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import qrcode
 from io import BytesIO
+import json
 
 st.write("当前版本：v1.4 - 原始JSON直接解析模式")
 # 页面设置
