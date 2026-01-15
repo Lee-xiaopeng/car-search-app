@@ -34,7 +34,7 @@ st.markdown("""
     /* 2. 调整右上角 Logo 位置和大小 */
     .logo-container {
         position: fixed;
-        top: 25px; /* 下移Logo位置，为工具栏留出空间 */
+        top: 45px; /* 下移Logo位置，为工具栏留出空间 */
         right: 15px;
         z-index: 9999;
     }
@@ -75,7 +75,7 @@ st.markdown("""
             width: 65px; /* 移动端稍小但比之前大 */
         }
         .logo-container {
-            top: 20px; /* 移动端下移 */
+            top: 45px; /* 移动端下移 */
             right: 10px;
         }
         
