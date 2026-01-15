@@ -10,23 +10,30 @@ st.write("当前版本：v1.1 - 修复了Base64错误")
 st.set_page_config(page_title="车辆信息查询", layout="centered")
 
 # --- 1. 数据库连接 ---
-
 @st.cache_resource
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    # 转换为普通字典以进行操作
+    # 获取原始数据
     creds_dict = dict(st.secrets["gcp_service_account"])
+    raw_key = creds_dict["private_key"]
     
-    # 【核心修复】自动处理密钥中的换行和残留空格
-    if "private_key" in creds_dict:
-        # 将字面量的 \n 替换为真实的换行符，并去掉行首尾空格
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
-        
+    # 【暴力修复逻辑】
+    # 1. 先去掉前后的空白
+    fixed_key = raw_key.strip()
+    # 2. 如果里面有被转义的 \n，先转回换行符
+    fixed_key = fixed_key.replace("\\n", "\n")
+    # 3. 针对 65 字符错误：分行处理，强制删掉每一行末尾多出的空格
+    lines = [line.strip() for line in fixed_key.split("\n")]
+    fixed_key = "\n".join(lines)
+    
+    # 写回字典
+    creds_dict["private_key"] = fixed_key
+    
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     
-    # 确保表格名称与 image_5f2faf.jpg 中的 "PlateDB" 严格一致
+    # 按照 image_5f8a29.jpg 确认表格名是 PlateDB
     return client.open("PlateDB").sheet1
 
 try:
