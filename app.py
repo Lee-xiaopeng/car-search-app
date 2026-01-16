@@ -100,7 +100,7 @@ st.markdown("""
     /* 桌面端特定样式 */
     @media (min-width: 769px) {
         .custom-logo { 
-            width: 90px; /* 桌面端更大 */
+            width: 250px; /* 桌面端更大 */
         }
         .logo-container { 
             top: 30px; /* 下移位置 */
