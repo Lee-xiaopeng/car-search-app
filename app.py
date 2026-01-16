@@ -370,7 +370,7 @@ if submitted or search_id:
                                             text-align: center;
                                             border-left: 4px solid #339af0;">
                                     <div style="font-size: 1.1rem; color: #1c7ed6; font-weight: 600;">
-                                        📊 共找到 {len(result)} 条匹配记录
+                                        📊 共找到 {len(result)} 辆车
                                     </div>
                                     <div style="font-size: 0.9rem; color: #495057; margin-top: 0.5rem;">
                                         搜索关键词: <span style="font-weight: 700; color: #e03131;">{search_term}</span>
