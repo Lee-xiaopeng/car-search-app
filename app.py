@@ -2,7 +2,74 @@ import streamlit as st
 import pandas as pd
 import gspread
 import json
+import time
+import threading
+import requests
+from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
+
+# --- 新增：后台定时任务函数 ---
+def background_task():
+    """
+    每小时执行一次的后台任务
+    访问指定的URL，可以用于保持应用活跃或执行定时任务
+    """
+    target_url = "https://your-api-url.com/heartbeat"  # 请替换为实际的URL
+    
+    while True:
+        try:
+            # 记录任务执行时间
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{current_time}] 执行后台任务，访问URL: {target_url}")
+            
+            # 访问URL
+            response = requests.get(target_url, timeout=10)
+            
+            if response.status_code == 200:
+                print(f"[{current_time}] URL访问成功: {response.status_code}")
+            else:
+                print(f"[{current_time}] URL访问异常: {response.status_code}")
+                
+        except Exception as e:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{current_time}] 后台任务执行失败: {str(e)}")
+        
+        # 等待1小时（3600秒）
+        time.sleep(3600)
+
+# --- 新增：启动后台任务（使用缓存确保只启动一次） ---
+@st.cache_resource
+def start_background_task():
+    """
+    启动后台任务线程
+    使用@st.cache_resource确保线程只启动一次
+    """
+    # 检查线程是否已经启动
+    if not hasattr(st.session_state, 'background_task_started'):
+        try:
+            # 创建并启动后台线程
+            task_thread = threading.Thread(target=background_task, daemon=True)
+            task_thread.start()
+            st.session_state.background_task_started = True
+            print("后台任务线程已启动")
+        except Exception as e:
+            print(f"启动后台任务失败: {str(e)}")
+    return True
+
+# --- 1. 页面配置 ---
+st.set_page_config(
+    page_title="车辆信息管理系统",
+    page_icon="🚗",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
+
+# 启动后台任务
+start_background_task()
+
+
+
+
 
 # --- 1. 页面配置 ---
 st.set_page_config(
