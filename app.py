@@ -35,7 +35,7 @@ def background_task():
             print(f"[{current_time}] 后台任务执行失败: {str(e)}")
         
         # 等待1小时（3600秒）
-        time.sleep(3600)
+        time.sleep(600)
 
 # --- 新增：启动后台任务（使用缓存确保只启动一次） ---
 @st.cache_resource
