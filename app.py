@@ -437,7 +437,7 @@ with st.form("search_form"):
     with col2:
         submitted = st.form_submit_button("🔍 立即搜索", use_container_width=True)
 
-# --- 6. 结果展示与逻辑（增加异常防护） ---
+# --- 6. 结果展示与逻辑（增加异常防护 + 修复continue语法错误） ---
 if submitted or search_id:
     query = search_id.strip() # 去除前后空格
     
@@ -457,43 +457,42 @@ if submitted or search_id:
                         data = sheet.get_all_records(timeout=30)
                         df = pd.DataFrame(data)
                         
-                        # 空数据处理
+                        # 空数据处理（修复continue语法错误）
                         if df.empty:
                             st.warning("📊 数据库中暂无车辆信息")
-                            continue
-                            
-                        # 4. 逻辑修改：转大写后进行包含匹配 (Contains)
-                        search_term = query.upper()
-                        result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term, na=False)]
-                        
-                        if not result.empty:
-                            # 添加结果统计卡片
-                            st.markdown(f"""
-                                <div style="background: linear-gradient(135deg, #e7f5ff, #d0ebff); 
-                                            border-radius: 12px; 
-                                            padding: 1rem; 
-                                            margin: 1rem 0; 
-                                            text-align: center;
-                                            border-left: 4px solid #339af0;">
-                                    <div style="font-size: 1.1rem; color: #1c7ed6; font-weight: 600;">
-                                        📊 共找到 {len(result)} 辆车
-                                    </div>
-                                    <div style="font-size: 0.9rem; color: #495057; margin-top: 0.5rem;">
-                                        搜索关键词: <span style="font-weight: 700; color: #e03131;">{search_term}</span>
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
-                            
-                            for _, row in result.iterrows():
-                                card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
-                                for col in df.columns:
-                                    if col != "车牌号":
-                                        val = str(row[col]).strip() if str(row[col]).strip() != "" else "—"
-                                        card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
-                                card_html += '</div>'
-                                st.markdown(card_html, unsafe_allow_html=True)
                         else:
-                            st.warning(f"❌ 未找到包含「{search_term}」的车辆信息")
+                            # 4. 逻辑修改：转大写后进行包含匹配 (Contains)
+                            search_term = query.upper()
+                            result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term, na=False)]
+                            
+                            if not result.empty:
+                                # 添加结果统计卡片
+                                st.markdown(f"""
+                                    <div style="background: linear-gradient(135deg, #e7f5ff, #d0ebff); 
+                                                border-radius: 12px; 
+                                                padding: 1rem; 
+                                                margin: 1rem 0; 
+                                                text-align: center;
+                                                border-left: 4px solid #339af0;">
+                                        <div style="font-size: 1.1rem; color: #1c7ed6; font-weight: 600;">
+                                            📊 共找到 {len(result)} 辆车
+                                        </div>
+                                        <div style="font-size: 0.9rem; color: #495057; margin-top: 0.5rem;">
+                                            搜索关键词: <span style="font-weight: 700; color: #e03131;">{search_term}</span>
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                
+                                for _, row in result.iterrows():
+                                    card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
+                                    for col in df.columns:
+                                        if col != "车牌号":
+                                            val = str(row[col]).strip() if str(row[col]).strip() != "" else "—"
+                                            card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
+                                    card_html += '</div>'
+                                    st.markdown(card_html, unsafe_allow_html=True)
+                            else:
+                                st.warning(f"❌ 未找到包含「{search_term}」的车辆信息")
                     except gspread.exceptions.APIError as e:
                         st.error(f"📡 数据库接口错误：{e}，请稍后重试")
                         print(traceback.format_exc())
