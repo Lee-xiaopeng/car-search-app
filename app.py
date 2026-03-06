@@ -7,100 +7,77 @@ import threading
 import requests
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
-import traceback
 
-# --- 全局变量：线程控制标志 ---
-if 'thread_stop_flag' not in st.session_state:
-    st.session_state.thread_stop_flag = False
-
-# --- 优化：后台定时任务函数（增加异常捕获/退出机制） ---
+# --- 新增：后台定时任务函数 ---
 def background_task():
     """
     每小时执行一次的后台任务
     访问指定的URL，可以用于保持应用活跃或执行定时任务
     """
     target_url = "https://your-api-url.com/heartbeat"  # 请替换为实际的URL
-    retry_interval = 60  # 单次失败后重试间隔（秒）
-    hour_interval = 600  # 1小时=3600秒
     
-    while not st.session_state.thread_stop_flag:  # 增加退出标志
+    while True:
         try:
             # 记录任务执行时间
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"[{current_time}] 执行后台任务，访问URL: {target_url}")
             
-            # 访问URL（增加超时+重试）
-            response = requests.get(
-                target_url, 
-                timeout=10,
-                headers={"User-Agent": "Streamlit App/1.0"}  # 增加UA避免被拦截
-            )
+            # 访问URL
+            response = requests.get(target_url, timeout=10)
             
             if response.status_code == 200:
                 print(f"[{current_time}] URL访问成功: {response.status_code}")
             else:
                 print(f"[{current_time}] URL访问异常: {response.status_code}")
                 
-        except requests.exceptions.Timeout:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{current_time}] 后台任务超时：URL请求超过10秒")
-            time.sleep(retry_interval)  # 短重试后继续
-            continue
-        except requests.exceptions.ConnectionError:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{current_time}] 后台任务连接失败：网络/URL不可达")
-            time.sleep(retry_interval)
-            continue
         except Exception as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"[{current_time}] 后台任务执行失败: {str(e)}")
-            print(traceback.format_exc())  # 打印完整堆栈，便于排查
         
-        # 等待1小时（修复休眠时间），同时检测退出标志
-        for _ in range(hour_interval // 10):  # 每10秒检查一次退出标志
-            if st.session_state.thread_stop_flag:
-                break
-            time.sleep(10)
+        # 等待1小时（3600秒）
+        time.sleep(600)
 
-# --- 优化：启动后台任务（更健壮的线程管理） ---
-@st.cache_resource(ttl=3600)  # 增加缓存过期，避免永久缓存
+# --- 新增：启动后台任务（使用缓存确保只启动一次） ---
+@st.cache_resource
 def start_background_task():
     """
     启动后台任务线程
-    确保线程唯一且可退出
+    使用@st.cache_resource确保线程只启动一次
     """
-    # 停止旧线程（如果存在）
-    if hasattr(st.session_state, 'background_thread') and st.session_state.background_thread.is_alive():
-        st.session_state.thread_stop_flag = True
-        st.session_state.background_thread.join(timeout=30)  # 等待线程退出
-    
-    # 重置退出标志
-    st.session_state.thread_stop_flag = False
-    
-    try:
-        # 创建并启动后台线程
-        task_thread = threading.Thread(target=background_task, daemon=True)
-        task_thread.start()
-        st.session_state.background_thread = task_thread
-        st.session_state.background_task_started = True
-        print("后台任务线程已启动")
-    except Exception as e:
-        print(f"启动后台任务失败: {str(e)}")
-        print(traceback.format_exc())
+    # 检查线程是否已经启动
+    if not hasattr(st.session_state, 'background_task_started'):
+        try:
+            # 创建并启动后台线程
+            task_thread = threading.Thread(target=background_task, daemon=True)
+            task_thread.start()
+            st.session_state.background_task_started = True
+            print("后台任务线程已启动")
+        except Exception as e:
+            print(f"启动后台任务失败: {str(e)}")
     return True
 
-# --- 1. 页面配置（修复重复调用问题） ---
-if not hasattr(st.session_state, 'page_config_set'):
-    st.set_page_config(
-        page_title="车辆信息管理系统",
-        page_icon="🚗",
-        layout="centered",
-        initial_sidebar_state="auto"
-    )
-    st.session_state.page_config_set = True
+# --- 1. 页面配置 ---
+st.set_page_config(
+    page_title="车辆信息管理系统",
+    page_icon="🚗",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
 
 # 启动后台任务
 start_background_task()
+
+
+
+
+
+# --- 1. 页面配置 ---
+st.set_page_config(
+    page_title="车辆信息管理系统",
+    page_icon="🚗",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
 
 # --- 2. 核心 CSS 样式 ---
 st.markdown("""
@@ -361,32 +338,19 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_resource(ttl=1800)  # 30分钟刷新一次连接，避免长期连接失效
+# --- 3. 数据库连接 ---
+@st.cache_resource
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    max_retries = 3  # 连接失败重试次数
-    retry_delay = 5  # 重试间隔（秒）
-    
-    for attempt in range(max_retries):
-        try:
-            json_info = st.secrets["gcp_service_account"]["json_data"].replace("\\\\n", "\\n")
-            creds_dict = json.loads(json_info)
-            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-            
-            # 修复：移除 authorize() 中的 timeout 参数（该方法不支持）
-            client = gspread.authorize(creds)
-            
-            # 超时配置移到 open() 方法中（gspread 支持在此处设置超时）
-            sheet = client.open("PlateDB", timeout=30).sheet1
-            print(f"数据库连接成功（第{attempt+1}次尝试）")
-            return sheet
-        except Exception as e:
-            print(f"数据库连接失败（第{attempt+1}次尝试）: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(retry_delay)
-            else:
-                st.error(f"数据库连接失败（已重试{max_retries}次）：{str(e)}")
-                return None
+    try:
+        json_info = st.secrets["gcp_service_account"]["json_data"].replace("\\\\n", "\\n")
+        creds_dict = json.loads(json_info)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        return client.open("PlateDB").sheet1
+    except Exception as e:
+        st.error(f"数据库连接失败，请检查配置")
+        return None
 
 sheet = init_connection()
 
@@ -414,11 +378,9 @@ with st.sidebar:
                         try:
                             sheet.append_row([f1, f2, f3, f4, f5, f6.upper().strip()])
                             st.success("✅ 保存成功！")
-                            # 清除缓存但不影响线程
-                            st.cache_resource.clear(exceptions=[start_background_task])
+                            st.cache_resource.clear()
                         except Exception as e:
                             st.error(f"保存失败: {e}")
-                            print(traceback.format_exc())
                     else:
                         st.warning("车牌号为必填项")
 
@@ -439,7 +401,7 @@ with st.form("search_form"):
     with col2:
         submitted = st.form_submit_button("🔍 立即搜索", use_container_width=True)
 
-# --- 6. 结果展示与逻辑（增加异常防护 + 修复continue语法错误） ---
+# --- 6. 结果展示与逻辑 ---
 if submitted or search_id:
     query = search_id.strip() # 去除前后空格
     
@@ -451,65 +413,47 @@ if submitted or search_id:
         else:
             # 3. 长度合格，连接数据库
             if not sheet:
-                st.error("数据库无法连接，请稍后重试")
+                st.error("数据库无法连接")
             else:
                 with st.spinner("🔍 正在检索数据库..."):
                     try:
-                        # 增加数据读取超时
-                        data = sheet.get_all_records(timeout=30)
-                        df = pd.DataFrame(data)
+                        df = pd.DataFrame(sheet.get_all_records())
+                        # 4. 逻辑修改：转大写后进行包含匹配 (Contains)
+                        # contains 默认就是匹配连续字符串，且不区分位置
+                        search_term = query.upper()
                         
-                        # 空数据处理（修复continue语法错误）
-                        if df.empty:
-                            st.warning("📊 数据库中暂无车辆信息")
-                        else:
-                            # 4. 逻辑修改：转大写后进行包含匹配 (Contains)
-                            search_term = query.upper()
-                            result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term, na=False)]
+                        # 核心查询语句：车牌号列转字符串 -> 转大写 -> 检查是否包含用户输入的搜索词
+                        result = df[df['车牌号'].astype(str).str.upper().str.contains(search_term)]
+                        
+                        if not result.empty:
+                            #st.success(f"✅ 找到 {len(result)} 条包含「{search_term}」的记录")
                             
-                            if not result.empty:
-                                # 添加结果统计卡片
-                                st.markdown(f"""
-                                    <div style="background: linear-gradient(135deg, #e7f5ff, #d0ebff); 
-                                                border-radius: 12px; 
-                                                padding: 1rem; 
-                                                margin: 1rem 0; 
-                                                text-align: center;
-                                                border-left: 4px solid #339af0;">
-                                        <div style="font-size: 1.1rem; color: #1c7ed6; font-weight: 600;">
-                                            📊 共找到 {len(result)} 辆车
-                                        </div>
-                                        <div style="font-size: 0.9rem; color: #495057; margin-top: 0.5rem;">
-                                            搜索关键词: <span style="font-weight: 700; color: #e03131;">{search_term}</span>
-                                        </div>
+                            # 添加结果统计卡片
+                            st.markdown(f"""
+                                <div style="background: linear-gradient(135deg, #e7f5ff, #d0ebff); 
+                                            border-radius: 12px; 
+                                            padding: 1rem; 
+                                            margin: 1rem 0; 
+                                            text-align: center;
+                                            border-left: 4px solid #339af0;">
+                                    <div style="font-size: 1.1rem; color: #1c7ed6; font-weight: 600;">
+                                        📊 共找到 {len(result)} 辆车
                                     </div>
-                                """, unsafe_allow_html=True)
-                                
-                                for _, row in result.iterrows():
-                                    card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
-                                    for col in df.columns:
-                                        if col != "车牌号":
-                                            val = str(row[col]).strip() if str(row[col]).strip() != "" else "—"
-                                            card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
-                                    card_html += '</div>'
-                                    st.markdown(card_html, unsafe_allow_html=True)
-                            else:
-                                st.warning(f"❌ 未找到包含「{search_term}」的车辆信息")
-                    except gspread.exceptions.APIError as e:
-                        st.error(f"📡 数据库接口错误：{e}，请稍后重试")
-                        print(traceback.format_exc())
+                                    <div style="font-size: 0.9rem; color: #495057; margin-top: 0.5rem;">
+                                        搜索关键词: <span style="font-weight: 700; color: #e03131;">{search_term}</span>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            for _, row in result.iterrows():
+                                card_html = f'<div class="vehicle-card"><div class="plate-header">车牌：{row["车牌号"]}</div>'
+                                for col in df.columns:
+                                    if col != "车牌号":
+                                        val = str(row[col]).strip() if str(row[col]).strip() != "" else "—"
+                                        card_html += f'<div class="info-row"><span class="info-label">{col}</span><span class="info-value">{val}</span></div>'
+                                card_html += '</div>'
+                                st.markdown(card_html, unsafe_allow_html=True)
+                        else:
+                            st.warning(f"❌ 未找到包含「{search_term}」的车辆信息")
                     except Exception as e:
-                        st.error(f"❌ 查询过程发生错误：{str(e)}，请稍后重试")
-                        print(traceback.format_exc())
-
-# --- 7. 应用退出清理（可选） ---
-def cleanup():
-    """应用退出时清理资源"""
-    st.session_state.thread_stop_flag = True
-    if hasattr(st.session_state, 'background_thread'):
-        st.session_state.background_thread.join(timeout=10)
-    print("应用资源已清理")
-
-# Streamlit 关闭时触发清理（需配合服务器配置）
-import atexit
-atexit.register(cleanup)
+                        st.error(f"查询过程发生错误: {e}")
