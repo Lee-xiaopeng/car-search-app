@@ -361,7 +361,6 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# --- 3. 数据库连接（增加重试/超时） ---
 @st.cache_resource(ttl=1800)  # 30分钟刷新一次连接，避免长期连接失效
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -373,9 +372,12 @@ def init_connection():
             json_info = st.secrets["gcp_service_account"]["json_data"].replace("\\\\n", "\\n")
             creds_dict = json.loads(json_info)
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-            # 增加连接超时
-            client = gspread.authorize(creds, timeout=30)
-            sheet = client.open("PlateDB").sheet1
+            
+            # 修复：移除 authorize() 中的 timeout 参数（该方法不支持）
+            client = gspread.authorize(creds)
+            
+            # 超时配置移到 open() 方法中（gspread 支持在此处设置超时）
+            sheet = client.open("PlateDB", timeout=30).sheet1
             print(f"数据库连接成功（第{attempt+1}次尝试）")
             return sheet
         except Exception as e:
